@@ -8,7 +8,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -69,19 +68,22 @@ typedef struct usager{
     Poubelle poubelleDuFoyer;
 }Usager;
 
-void remplirPoubelle(int poids, int poubelle){
+void remplirPoubelle(Usager user){
 //mutex sur Poubelle.remplissage => ressource critique
-    if(type == 0){
+    if(user.poubelle.type == MENAGER){
+    P(0);
 
-
+    V(0);
     }
-    else if(type == 1){
+    else if(user.poubelle.type == VERRE){
+    P(0);
 
-
+    V(0);
     }
     else{
+    P(0);
 
-
+    V(0);
     }
 }
 
@@ -97,6 +99,5 @@ int main(int argc, char** argv){
     // Créer Threads usager
     // Créer Threads camion de ramassage
     //processus Centre de tri
-    return 0;
+    return EXIT_SUCCESS;
 }
-
