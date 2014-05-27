@@ -22,27 +22,24 @@
 #define CLE 1
 #define CLE_BAC 2
 
-int P (int SemId, int Nsem) {       /*   P(s)      */
+int P (int SemId, int Nsem) {
 
     struct sembuf SemBuf = {0,-1,0} ;
     SemBuf.sem_num = Nsem ;
     return semop(SemId, &SemBuf,1) ;
 }
 
-int V (int SemId, int Nsem) {       /*   V(s)      */
+int V (int SemId, int Nsem) {
 
     struct sembuf SemBuf = {0,1,0} ;
     SemBuf.sem_num = Nsem ;
     return semop(SemId, &SemBuf, 1) ;
 }
-// struct client Foyer, Poubelle,
+
+// Les défférentes structures qui repré&sente les différentes entités qui réagissent ensemble
 typedef struct dechet{
 
     int type;
-    // 0 : ménager
-    // 1 : verre
-    // 2 : carton
-
     int volume;
 }Dechet;
 
@@ -55,49 +52,62 @@ typedef struct poubelle {
 
 typedef struct ramasseur{
 
-    int rempli ;
+    int remplissage;
     int capaCamion;
     int tournee[100];
+    int type; //type de dechets dont il s'occupe
 }Ramasseur;
 
 typedef struct usager{
 
     int contrat;
     int foyer;
-    Dechet poubelle;
+    Dechet dechets;
     Poubelle poubelleDuFoyer;
 }Usager;
 
-void remplirPoubelle(Usager user){
-//mutex sur Poubelle.remplissage => ressource critique
-    if(user.poubelle.type == MENAGER){
-    P(0);
+void remplirPoubelle(Usager user, int semid, int semnum){
 
-    V(0);
-    }
-    else if(user.poubelle.type == VERRE){
-    P(0);
-
-    V(0);
-    }
-    else{
-    P(0);
-
-    V(0);
+    //mutex sur Poubelle.remplissage => ressource critique
+    if (user.dechets.type == MENAGER) {
+        P(semid, semnum);
+        user.poubelleDuFoyer += user.dechets.volume;
+        V(semid, semnum);
+    } else if (user.dechets.type == VERRE) {
+        P(semid, semnum);
+        poubelleVerre += user.dechets.volume;
+        V(semid, semnum);
+    } else {
+        P(semid, semnum);
+        poubelleCarton += user.dechets.volume;
+        V(semid, semnum);
     }
 }
 
 
-void viderPoubelle(int poids, int poubelle){
-//mutex sur poubelle.remplissage => ressource critique
+void viderPoubelle(Ramasseur camion, Poubelle poubelle){
+
+    //mutex sur poubelle.remplissage => ressource critique
+    if (camion.type == MENAGER) {
+        P(semid, semnum);
+        camion.remplissage += user.poubelleDuFoyer;
+        user.poubelleDuFoyer = 0;
+    } else if (camion.type == VERRE) {
+        camion.remplissage += poubelleVerre;
+        poubelleVerre = 0;
+    } else {
+
+
+    }
 
 }
 
 int main(int argc, char** argv){
-
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
+    // A tout moment envoyé un SIGSTOP, stop la simulation et affiche les contenus des poubelles
     // Créer Threads usager
     // Créer Threads camion de ramassage
-    //processus Centre de tri
+    //processus Centre de tri qui gère les threads camion poubelle
+    //processus Ville qui gère les threads usagers
     return EXIT_SUCCESS;
 }
