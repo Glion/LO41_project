@@ -16,6 +16,7 @@
 #include <sys/sem.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
 
 #define MENAGER 0
 #define VERRE 1
@@ -27,6 +28,8 @@
 
 #define NOMBRE_USAGER 100
 #define NOMBRE_CAMION 3
+
+#define JOURS 30
 
 int P (int SemId, int Nsem) {
 
@@ -70,11 +73,12 @@ typedef struct usager {
     int foyer;
     int facturation_bac; // compteur du nombre de ramassage
     int facturation_cle;
+    int addition;
     Dechet dechets[3];
     Poubelle poubelleDuFoyer;
 }Usager;
 
-void remplirPoubelle (Usager user, int semid, int semnum, Poubelle poubelle) {
+void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
 
     int i;
     //mutex sur Poubelle.remplissage => ressource critique
@@ -106,8 +110,23 @@ void viderPoubelle (Ramasseur camion, Poubelle poubellePleine) {
         printf("error : Wrong bin type\n");
     }
 }
-void *utiliser(){
 
+void *utiliser(Usager user){
+
+    int i, j;
+    Dechet dechets[3];
+    dechets[0].type == MENAGER;
+    dechets[1].type == VERRE;
+    dechets[2].type == CARTON;
+    for (i = 0; i < JOURS; i++) {
+        for ( j = 0; j < 3; i ++) {
+            srand ((unsigned) time(NULL)) ;
+            dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 30L
+            remplirPoubelle(user, semid, semnum, dechets[j]);
+        }
+        usleep(500000);// Dort une demi-seconde pour simuler le cycle Jour/nuit
+    }
+    pthread_exit(&user.addition);
 }
 
 int main (int argc, char** argv) {
