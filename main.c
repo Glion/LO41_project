@@ -148,3 +148,15 @@ int main (int argc, char** argv) {
     pthread_exit(NULL);
     return EXIT_SUCCESS;
 }
+
+/************************************************
+ * TODO GLION :                                 *
+ *                                              *
+ * S'occupes de la partie centre de tri :       *
+ * - envoyer les camions ramasser les poubelles *
+ *   Lors du signal                             *
+ * - incrémenter le compteur                    *
+ *                                              *
+ *   Ma partie est pas encore dans le fichier   *
+ *   car elle bug, je m'en occupe rapidement    *
+ ************************************************
