@@ -5,7 +5,7 @@
  * Projet de l'UV L041:
  * Gérer les poubelles d'une ville
  */
-//plop
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
