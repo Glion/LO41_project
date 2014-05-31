@@ -88,14 +88,14 @@ void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
 
     int i;
     //mutex sur Poubelle.remplissage => ressource critique
-    if (user.dechets[i].type == poubelle.type && poubelle.remplissage + user.dechets[i].volume <= poubelle.volume) {
+    if (user.dechets[i].type == user.poubelleDuFoyer.type && user.poubelleDuFoyer.remplissage + user.dechets[i].volume <= user.poubelleDuFoyer.volume) {
         P(semid, semnum);
-        poubelle.remplissage += user.dechets[i].volume;
+        user.poubelleDuFoyer.remplissage += user.dechets[i].volume;
         user.dechets[i].volume = 0;
         V(semid, semnum);
-        if (poubelle.type == MENAGER) user.facturation_bac++;
+        if (user.poubelleDuFoyer.type == MENAGER) user.facturation_bac++;
     }
-    else if (poubelle.type == MENAGER && poubelle.remplissage + user.dechets[i].volume > poubelle.volume) {
+    else if (user.poubelleDuFoyer.type == MENAGER && user.poubelleDuFoyer.remplissage + user.dechets[i].volume > user.poubelleDuFoyer.volume) {
         if (user.contrat == CLE_BAC) {
 
         }
@@ -122,7 +122,7 @@ void* viderPoubelle (void *data){//Ramasseur camion, Poubelle poubellePleine) {
 
 void *utiliser(Usager user){
 
-    int i, j;
+    int i, j, semid, semnum;
     Dechet dechets[3];
     dechets[0].type == MENAGER;
     dechets[1].type == VERRE;
