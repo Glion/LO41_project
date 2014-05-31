@@ -83,6 +83,9 @@ typedef struct ramasser{
     Poubelle poubellePleine;
 }Ramasser;
 
+typedef struct use{
+    Usager usager;
+}Use;
 
 void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
 
@@ -120,8 +123,9 @@ void* viderPoubelle (void *data){//Ramasseur camion, Poubelle poubellePleine) {
     free(ramasser);
 }
 
-void *utiliser(Usager user){
+void *utiliser(void *data){ //Usager user){
 
+    Use *use = data;
     int i, j, semid, semnum;
     Dechet dechets[3];
     dechets[0].type == MENAGER;
@@ -131,11 +135,11 @@ void *utiliser(Usager user){
         for ( j = 0; j < 3; i ++) {
             srand ((unsigned) time(NULL)) ;
             dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 30L
-            remplirPoubelle(user, semid, semnum, dechets[j]);
+            remplirPoubelle(use->usager, semid, semnum, dechets[j]);
         }
         usleep(500000);// Dort une demi-seconde pour simuler le cycle Jour/nuit
     }
-    pthread_exit(&user.addition);
+    pthread_exit(&use->usager.addition);
 }
 
 void compoFoyer (Usager user){
@@ -156,11 +160,13 @@ int main (int argc, char** argv) {
     int i, countCamion, rc;
     Usager usager[NOMBRE_USAGER];
     Ramasseur camion[NOMBRE_CAMION];
-    
-    pthread_t *usager_id[NOMBRE_USAGER];
+    struct Use *use;
+   
+    pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
     for (i = 0; i < NOMBRE_USAGER; i ++) {
-        pthread_create (usager_id[i], NULL, utiliser, usager_id[i]);
+        use = malloc(sizeof(use));
+        pthread_create (&usager_id[i], NULL, utiliser, use);
     }
 
 
