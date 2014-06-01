@@ -31,6 +31,9 @@
 
 #define JOURS 30
 
+int shmid;
+int shm_cle;
+
 int P (int SemId, int Nsem) {
 
     struct sembuf SemBuf = {0,-1,0};
@@ -78,12 +81,14 @@ typedef struct usager {
     Poubelle poubelleDuFoyer;
 }Usager;
 
-typedef struct ramasser{
+typedef struct ramasser {
+
     Ramasseur camion;
     Poubelle poubellePleine;
 }Ramasser;
 
-typedef struct use{
+typedef struct use {
+
     Usager usager;
 }Use;
 
@@ -100,16 +105,14 @@ void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
     }
     else if (user.poubelleDuFoyer.type == MENAGER && user.poubelleDuFoyer.remplissage + user.dechets[i].volume > user.poubelleDuFoyer.volume) {
         if (user.contrat == CLE_BAC) {
-
         }
     }
 }
 
-void* viderPoubelle (void *data){//Ramasseur camion, Poubelle poubellePleine) {
+void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
 
     int semid, semnum;
     Ramasser *ramasser = data;
-
     //mutex sur poubelle.remplissage => ressource critique
     if (ramasser->camion.type == ramasser->poubellePleine.type) {
         P(semid, semnum);
@@ -123,7 +126,7 @@ void* viderPoubelle (void *data){//Ramasseur camion, Poubelle poubellePleine) {
     free(ramasser);
 }
 
-void *utiliser(void *data){ //Usager user){
+void *utiliser (void *data) { //Usager user){
 
     Use *use = data;
     int i, j, semid, semnum;
@@ -142,7 +145,8 @@ void *utiliser(void *data){ //Usager user){
     pthread_exit(&use->usager.addition);
 }
 
-void compoFoyer (Usager user){
+void compoFoyer (Usager user) {
+
     if(user.foyer == 1)
         user.poubelleDuFoyer.volume = 80;
     if(user.foyer == 2)
@@ -154,6 +158,25 @@ void compoFoyer (Usager user){
      }
 }
 
+void displayConsole (int signal, Usager user) {
+
+    int i, prixbac, prixcle, taille;
+    for(i = 0; i < NOMBRE_USAGER; i++){
+    }
+}
+
+void displayFile (int signal, Usager user) {
+
+    FILE *facturation;
+    facturation = fopen("facturation.txt", "w");
+    int i, prixbac, prixcle, taille;
+    for(i = 0; i < NOMBRE_USAGER; i++){
+        fprintf(facturation, "Usager numéro %d doit payer : %f\n", ++i, (user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
+    }
+    fclose(facturation);
+}
+
+Usager *allUser;
 
 int main (int argc, char** argv) {
 
@@ -161,15 +184,16 @@ int main (int argc, char** argv) {
     Usager usager[NOMBRE_USAGER];
     Ramasseur camion[NOMBRE_CAMION];
     struct Use *use;
-   
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
+    shmid = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
+    allUser = (Usager *)shmat(shmid, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i ++) {
-        use = malloc(sizeof(use));
+        use = malloc(sizeof(Usager));
         pthread_create (&usager_id[i], NULL, utiliser, use);
     }
-
-
+    signal(SIGTSTP, displayConsole);
+    signal(SIGKILL, displayFile);
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
     countCamion = 0;
     struct Ramasser *info;
@@ -177,7 +201,6 @@ int main (int argc, char** argv) {
         if(usager[i].poubelleDuFoyer.remplissage > 0.8*usager[i].poubelleDuFoyer.volume){ //si poubelle pleine à 80%, le camion va vider les poubelles
             if(countCamion < 3){
                 info = malloc(sizeof(info));
-                
                 rc = pthread_create(&camion_id[i], NULL, viderPoubelle, info);
                 if(rc){
                     printf("ERROR ; return code from pthread_create() is %d\n",rc);
@@ -188,7 +211,6 @@ int main (int argc, char** argv) {
             }
         }
     }
-
     // A tout moment envoyé un SIGSTOP, stop la simulation et affiche les contenus des poubelles
     // Créer Threads usager
     // Créer Threads camion de ramassage
