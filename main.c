@@ -100,6 +100,8 @@ typedef struct use {
     Usager usager;
 }Use;
 
+Usager *allUser;
+
 int remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
 
     int i;
@@ -190,8 +192,6 @@ void displayFile (int signal, Usager user) {
     fclose(facturation);
 }
 
-Usager *allUser;
-
 /*
  * argv[1] : utilisateurs
  * argv[2] : camions
@@ -224,24 +224,24 @@ int main (int argc, char** argv) {
     shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
     allUser = (Usager *) shmat (shmid_user, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i ++) {
-        use = malloc(sizeof(Usager));
+        use = malloc (sizeof (Usager));
         rc = pthread_create (&usager_id[i], NULL, utiliser, use);
-        if(rc){
+        if (rc) {
             printf("ERROR ; return code from pthread_create() is %d\n",rc);
             exit(-1);
         }
     }
-    sigcal(SIGTSTP, displayConsole);
+    signal(SIGTSTP, displayConsole);
     signal(SIGKILL, displayFile);
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
     countCamion = 0;
     struct Ramasser *info;
     for (i = 0; i < NOMBRE_USAGER; ++i) {
-        if(usager[i].poubelleDuFoyer.remplissage > 0.8*usager[i].poubelleDuFoyer.volume){ //si poubelle pleine à 80%, le camion va vider les poubelles
-            if(countCamion < 3){
+        if (usager[i].poubelleDuFoyer.remplissage > 0.8*usager[i].poubelleDuFoyer.volume) { //si poubelle pleine à 80%, le camion va vider les poubelles
+            if (countCamion < 3) {
                 info = malloc(sizeof(info));
                 rc = pthread_create(&camion_id[i], NULL, viderPoubelle, info);
-                if(rc){
+                if (rc) {
                     printf("ERROR ; return code from pthread_create() is %d\n",rc);
                     exit(-1);
                 }
@@ -255,14 +255,16 @@ int main (int argc, char** argv) {
     //processus Centre de tri qui gère les threads camion poubelle
     //processus Ville qui gère les threads usagers
     pthread_exit(NULL);
+    shmctl(shmid_donnees, IPC_RMID, NULL);
+    shmctl(shmid_user, IPC_RMID, NULL);
     return EXIT_SUCCESS;
 }
 
 // TODO
-// créer et terminer les threads proprement, y a une erreur ligne 158 ! (Glion je te laisse voir ça)
-// main.c:158:24: error: request for member ‘addition’ in something not a structure or union
+// créer et terminer les threads proprement, y a une erreur ligne 160 ! (Glion je te laisse voir ça)
+// main.c:160:24: error: request for member ‘addition’ in something not a structure or union
 
-// utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus )
+// utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus, quasiment fini)
 // vérifier les signaux ( je m'en occupe, je suis en plein dessus )
 // réseaux de pétrie ... ( si t'es motivé x) )
 // fonctionnement de l'ensemble du programme, rien oublier ?
