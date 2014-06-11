@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <time.h>
+#include <signal.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -29,14 +30,17 @@
 #define CLE 1
 #define CLE_BAC 2
 
-#define NOMBRE_USAGER atoi(argv[1])
-#define NOMBRE_CAMION atoi(argv[2])
+#define NOMBRE_USAGER donnees[0]
+#define NOMBRE_CAMION donnees[1]
+#define NOMBRE_COLLECTIVE donnees[3]
+#define NOMBRE_VERRE donnees[4]
+#define NOMBRE_CARTON donnees[5]
 
 #define JOURS 30
 
 int shmid_donnees, shmid_user;
 int shm_cle;
-int donnees[5];
+int *donnees;
 
 int P (int SemId, int Nsem) {
 
@@ -198,21 +202,36 @@ Usager *allUser;
 int main (int argc, char** argv) {
 
     int i, countCamion, rc, sem_id;
+    struct Use *use;
+    /*
+     * Mise des données du programme passeée en paremètre
+     * dans des segments de mémoire partagée,
+     * pour un accès simplifié entre touts les
+     * processus/threads du programme
+     */
+    shmid_donnees = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
+    donnees = (int *) shmat (shmid_donnees, NULL, 0);
+    donnees[0] = atoi(argv[1]);
+    donnees[1] = atoi(argv[2]);
+    donnees[2] = atoi(argv[3]);
+    donnees[3] = atoi(argv[4]);
+    donnees[4] = atoi(argv[5]);
     Usager usager[NOMBRE_USAGER];
     Ramasseur camion[NOMBRE_CAMION];
-    struct Use *use;
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
     sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
-    shmid_donnees = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
     shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
-    allUser = (Usager *) shmat (shmid, NULL, 0);
-    donnees = (int *) shmat (shmid_donnees, NULL, 0);
+    allUser = (Usager *) shmat (shmid_user, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i ++) {
         use = malloc(sizeof(Usager));
-        pthread_create (&usager_id[i], NULL, utiliser, use);
+        rc = pthread_create (&usager_id[i], NULL, utiliser, use);
+        if(rc){
+            printf("ERROR ; return code from pthread_create() is %d\n",rc);
+            exit(-1);
+        }
     }
-    signal(SIGTSTP, displayConsole);
+    sigcal(SIGTSTP, displayConsole);
     signal(SIGKILL, displayFile);
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
     countCamion = 0;
@@ -240,7 +259,9 @@ int main (int argc, char** argv) {
 }
 
 // TODO
-// créer et terminer les threads proprement ! (Glion je te laisse voir ça)
+// créer et terminer les threads proprement, y a une erreur ligne 158 ! (Glion je te laisse voir ça)
+// main.c:158:24: error: request for member ‘addition’ in something not a structure or union
+
 // utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus )
 // vérifier les signaux ( je m'en occupe, je suis en plein dessus )
 // réseaux de pétrie ... ( si t'es motivé x) )
