@@ -18,6 +18,9 @@
 #include <pthread.h>
 #include <time.h>
 
+#define TRUE 1
+#define FALSE 0
+
 #define MENAGER 0
 #define VERRE 1
 #define CARTON 2
@@ -26,13 +29,14 @@
 #define CLE 1
 #define CLE_BAC 2
 
-#define NOMBRE_USAGER 100
-#define NOMBRE_CAMION 3
+#define NOMBRE_USAGER atoi(argv[1])
+#define NOMBRE_CAMION atoi(argv[2])
 
 #define JOURS 30
 
-int shmid;
+int shmid_donnees, shmid_user;
 int shm_cle;
+int donnees[5];
 
 int P (int SemId, int Nsem) {
 
@@ -48,7 +52,7 @@ int V (int SemId, int Nsem) {
     return semop(SemId, &SemBuf, 1) ;
 }
 
-// Les défférentes structures qui représente les différentes entités qui réagissent ensemble
+// Les différentes structures qui représente les différentes entités qui réagissent ensemble
 typedef struct dechet {
 
     int type;
@@ -92,7 +96,7 @@ typedef struct use {
     Usager usager;
 }Use;
 
-void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
+int remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
 
     int i;
     //mutex sur Poubelle.remplissage => ressource critique
@@ -102,11 +106,15 @@ void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
         user.dechets[i].volume = 0;
         V(semid, semnum);
         if (user.poubelleDuFoyer.type == MENAGER) user.facturation_bac++;
+        return TRUE;
     }
     else if (user.poubelleDuFoyer.type == MENAGER && user.poubelleDuFoyer.remplissage + user.dechets[i].volume > user.poubelleDuFoyer.volume) {
         if (user.contrat == CLE_BAC) {
+
+        return TRUE;
         }
     }
+    return FALSE;
 }
 
 void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
@@ -128,7 +136,7 @@ void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
 
 void *utiliser (void *data) { //Usager user){
 
-    Use *use = data;
+    Usager *usager = data;
     int i, j, semid, semnum;
     Dechet dechets[3];
     dechets[0].type == MENAGER;
@@ -137,12 +145,13 @@ void *utiliser (void *data) { //Usager user){
     for (i = 0; i < JOURS; i++) {
         for ( j = 0; j < 3; i ++) {
             srand ((unsigned) time(NULL)) ;
-            dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 30L
-            remplirPoubelle(use->usager, semid, semnum, dechets[j]);
+            dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 20L
+            if (remplirPoubelle(*usager, semid, semnum, dechets[j]) == FALSE) dechets[j].volume = 0;
+            //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
         }
-        usleep(500000);// Dort une demi-seconde pour simuler le cycle Jour/nuit
+        usleep(500000);// Dort une demi-seconde pour simuler journée
     }
-    pthread_exit(&use->usager.addition);
+    pthread_exit(usager.addition);
 }
 
 void compoFoyer (Usager user) {
@@ -162,6 +171,7 @@ void displayConsole (int signal, Usager user) {
 
     int i, prixbac, prixcle, taille;
     for(i = 0; i < NOMBRE_USAGER; i++){
+        printf("Usager numéro %d doit payer : %f\n", ++i, (user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
     }
 }
 
@@ -178,16 +188,26 @@ void displayFile (int signal, Usager user) {
 
 Usager *allUser;
 
+/*
+ * argv[1] : utilisateurs
+ * argv[2] : camions
+ * argv[3] : poubelle collective
+ * argv[4] : poubelle verre
+ * argv[5] : poubelle carton
+ */
 int main (int argc, char** argv) {
 
-    int i, countCamion, rc;
+    int i, countCamion, rc, sem_id;
     Usager usager[NOMBRE_USAGER];
     Ramasseur camion[NOMBRE_CAMION];
     struct Use *use;
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
-    shmid = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
-    allUser = (Usager *)shmat(shmid, NULL, 0);
+    sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
+    shmid_donnees = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
+    shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
+    allUser = (Usager *) shmat (shmid, NULL, 0);
+    donnees = (int *) shmat (shmid_donnees, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i ++) {
         use = malloc(sizeof(Usager));
         pthread_create (&usager_id[i], NULL, utiliser, use);
@@ -211,7 +231,6 @@ int main (int argc, char** argv) {
             }
         }
     }
-    // A tout moment envoyé un SIGSTOP, stop la simulation et affiche les contenus des poubelles
     // Créer Threads usager
     // Créer Threads camion de ramassage
     //processus Centre de tri qui gère les threads camion poubelle
@@ -220,14 +239,9 @@ int main (int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-/************************************************
- * TODO GLION :                                 *
- *                                              *
- * S'occupes de la partie centre de tri :       *
- * - envoyer les camions ramasser les poubelles *
- *   Lors du signal                             *
- * - incrémenter le compteur                    *
- *                                              *
- *   Ma partie est pas encore dans le fichier   *
- *   car elle bug, je m'en occupe rapidement    *
- ************************************************/
+// TODO
+// créer et terminer les threads proprement ! (Glion je te laisse voir ça)
+// utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus )
+// vérifier les signaux ( je m'en occupe, je suis en plein dessus )
+// réseaux de pétrie ... ( si t'es motivé x) )
+// fonctionnement de l'ensemble du programme, rien oublier ?
