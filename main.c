@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <time.h>
+#include <signal.h>
 
 #define MENAGER 0
 #define VERRE 1
@@ -190,11 +191,17 @@ int main (int argc, char** argv) {
     allUser = (Usager *)shmat(shmid, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i ++) {
         use = malloc(sizeof(Usager));
-        pthread_create (&usager_id[i], NULL, utiliser, use);
+        rc = pthread_create (&usager_id[i], NULL, utiliser, use);
+        if(rc){
+            printf("ERROR ; return code from pthread_create() is %d\n",rc);
+            exit(-1);
+        }
     }
+
     signal(SIGTSTP, displayConsole);
     signal(SIGKILL, displayFile);
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
+    
     countCamion = 0;
     struct Ramasser *info;
     for (i = 0; i < NOMBRE_USAGER; ++i) {
