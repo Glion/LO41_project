@@ -138,6 +138,7 @@ void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
         printf("error : Wrong bin type\n");
     }
     free(ramasser);
+    pthread_exit(NULL);
 }
 
 void *utiliser (void *data) { //Usager user){
@@ -157,7 +158,9 @@ void *utiliser (void *data) { //Usager user){
         }
         usleep(500000);// Dort une demi-seconde pour simuler journée
     }
-    pthread_exit(usager.addition);
+    //pthread_exit(&usager->addition);
+    free(usager);
+    pthread_exit(NULL);
 }
 
 void compoFoyer (Usager user) {
@@ -177,7 +180,7 @@ void displayConsole (int signal, Usager user) {
 
     int i, prixbac, prixcle, taille;
     for(i = 0; i < NOMBRE_USAGER; i++){
-        printf("Usager numéro %d doit payer : %f\n", ++i, (user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
+        printf("Usager numéro %d doit payer : %f\n", ++i, (float)(user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
     }
 }
 
@@ -187,7 +190,7 @@ void displayFile (int signal, Usager user) {
     facturation = fopen("facturation.txt", "w");
     int i, prixbac, prixcle, taille;
     for(i = 0; i < NOMBRE_USAGER; i++){
-        fprintf(facturation, "Usager numéro %d doit payer : %f\n", ++i, (user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
+        fprintf(facturation, "Usager numéro %d doit payer : %f\n", ++i, (float)(user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
     }
     fclose(facturation);
 }
@@ -203,6 +206,7 @@ int main (int argc, char** argv) {
 
     int i, countCamion, rc, sem_id;
     struct Use *use;
+    //struct sigaction action;
     /*
      * Mise des données du programme passeée en paremètre
      * dans des segments de mémoire partagée,
@@ -223,13 +227,14 @@ int main (int argc, char** argv) {
     sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
     shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
     allUser = (Usager *) shmat (shmid_user, NULL, 0);
-    for (i = 0; i < NOMBRE_USAGER; i ++) {
-        use = malloc (sizeof (Usager));
+    for (i = 0; i < NOMBRE_USAGER; i++) {
+        use = malloc(sizeof(Usager));
         rc = pthread_create (&usager_id[i], NULL, utiliser, use);
         if (rc) {
             printf("ERROR ; return code from pthread_create() is %d\n",rc);
             exit(-1);
         }
+        free(use);
     }
     signal(SIGTSTP, displayConsole);
     signal(SIGKILL, displayFile);
@@ -247,6 +252,7 @@ int main (int argc, char** argv) {
                 }
                 countCamion++;
                 usager[i].facturation_bac++;
+                free(info);
             }
         }
     }
@@ -261,10 +267,11 @@ int main (int argc, char** argv) {
 }
 
 // TODO
-// créer et terminer les threads proprement, y a une erreur ligne 160 ! (Glion je te laisse voir ça)
-// main.c:160:24: error: request for member ‘addition’ in something not a structure or union
-
+// créer et terminer les threads proprement
 // utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus, quasiment fini)
 // vérifier les signaux ( je m'en occupe, je suis en plein dessus )
 // réseaux de pétrie ... ( si t'es motivé x) )
 // fonctionnement de l'ensemble du programme, rien oublier ?
+
+//Le warning pour les 2 signals c'est parce que en paramètre il doit y avoir normalement
+// qu'un seul paramètre int
