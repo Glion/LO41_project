@@ -38,7 +38,7 @@
 
 #define JOURS 30
 
-int shmid_donnees, shmid_user;
+int shmid_donnees, shmid_users, shmid_poubelles, shmid_camions;
 int shm_cle;
 int *donnees;
 
@@ -102,6 +102,7 @@ typedef struct use {
 
 Usager *allUser;
 Poubelle *allBin;
+Ramasseur *allTrucks;
 
 int remplirPoubelle (int id, int semid, int semnum) {
 
@@ -112,6 +113,7 @@ int remplirPoubelle (int id, int semid, int semnum) {
         allUser[id].poubelleDuFoyer.remplissage += allUser[id].dechets[i].volume;
         allUser[id].dechets[i].volume = 0;
         V(semid, semnum);
+        printf("L'usager %d a déposé %d de d'ordure\n");
         if (allUser[id].poubelleDuFoyer.type == MENAGER) allUser[id].facturation_bac++;
         return TRUE;
     }
@@ -125,7 +127,7 @@ int remplirPoubelle (int id, int semid, int semnum) {
     return FALSE;
 }
 
-void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
+void* viderPoubelle () {//Ramasseur camion, Poubelle poubellePleine) {
 
     int semid, semnum;
     Ramasser *ramasser = data;
@@ -226,15 +228,15 @@ int main (int argc, char** argv) {
     donnees[2] = atoi(argv[3]);
     donnees[3] = atoi(argv[4]);
     donnees[4] = atoi(argv[5]);
-    shmid_donnees = shmget(IPC_PRIVATE, (NOMBRE_VERRE + NOMBRE_COLLECTIVE + NOMBRE_CARTON)*sizeof(int), 0666);
+    shmid_poubelles = shmget(IPC_PRIVATE, (NOMBRE_VERRE + NOMBRE_COLLECTIVE + NOMBRE_CARTON)*sizeof(int), 0666);
     allBin = (Poubelle *) shmat (shmid_donnees, NULL, 0);
-    Usager usager[NOMBRE_USAGER];
-    Ramasseur camion[NOMBRE_CAMION];
+    shmid_camions = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
+    allTrucks = (int *) shmat (shmid_donnees, NULL, 0);
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
     sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
-    shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
-    allUser = (Usager *) shmat (shmid_user, NULL, 0);
+    shmid_users = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
+    allUser = (Usager *) shmat (shmid_users, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i++) {
         //use = malloc(sizeof(Usager));
         rc = pthread_create (&usager_id[i], NULL, utiliser, &i);
@@ -248,19 +250,18 @@ int main (int argc, char** argv) {
     signal(SIGKILL, displayFile);
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
     countCamion = 0;
-    struct Ramasser *info;
     for (i = 0; i < NOMBRE_USAGER; ++i) {
-        if (usager[i].poubelleDuFoyer.remplissage > 0.8*usager[i].poubelleDuFoyer.volume) { //si poubelle pleine à 80%, le camion va vider les poubelles
+        if (allUser[i].poubelleDuFoyer.remplissage > 0.8*allUser[i].poubelleDuFoyer.volume) { //si poubelle pleine à 80%, le camion va vider les poubelles
             if (countCamion < 3) {
-                info = malloc(sizeof(info));
-                rc = pthread_create(&camion_id[i], NULL, viderPoubelle, info);
+                //info = malloc(sizeof(info));
+                rc = pthread_create(&camion_id[i], NULL, viderPoubelle, NULL/*TODO*/);
                 if (rc) {
                     printf("ERROR ; return code from pthread_create() is %d\n",rc);
                     exit(-1);
                 }
                 countCamion++;
-                usager[i].facturation_bac++;
-                free(info);
+                allUser[i].facturation_bac++;
+                //free(info);
             }
         }
     }
@@ -270,16 +271,18 @@ int main (int argc, char** argv) {
     //processus Ville qui gère les threads usagers
     pthread_exit(NULL);
     shmctl(shmid_donnees, IPC_RMID, NULL);
-    shmctl(shmid_user, IPC_RMID, NULL);
+    shmctl(shmid_users, IPC_RMID, NULL);
+    shmctl(shmid_poubelles, IPC_RMID, NULL);
+    shmctl(shmid_camions, IPC_RMID, NULL);
     return EXIT_SUCCESS;
 }
 
 // TODO
+
+//initialiser les poubelles XXX
+//refaire la gestion des camions XXX
 // créer et terminer les threads proprement
-// utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus, quasiment fini)
 // vérifier les signaux ( je m'en occupe, je suis en plein dessus )
 // réseaux de pétrie ... ( si t'es motivé x) )
-// fonctionnement de l'ensemble du programme, rien oublier ?
-
 //Le warning pour les 2 signals c'est parce que en paramètre il doit y avoir normalement
 // qu'un seul paramètre int
