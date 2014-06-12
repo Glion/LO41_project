@@ -13,6 +13,6 @@ Ce programme est compatible avec:
 
 Utilisation:
 
-    -Pour compiler un simple gcc main.c -lpthread suffit
+    -Pour compiler un simple "gcc main.c -lpthread -g -o Poubelle" suffit
     -Pour l'utilisation : ./a.out NOMBREUSAGERS NOMBRECAMIONS NOMBREPOUBELLESCOLLECTIVES POUBELLEVERRE POUBELLECARTON
-    -les arguments 1 et 2 sont obligatoire, pas les autres
+    -Tout les arguments(5) sont obligatoires !

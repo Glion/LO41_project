@@ -101,22 +101,24 @@ typedef struct use {
 }Use;
 
 Usager *allUser;
+Poubelle *allBin;
 
-int remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
+int remplirPoubelle (int id, int semid, int semnum) {
 
     int i;
     //mutex sur Poubelle.remplissage => ressource critique
-    if (user.dechets[i].type == user.poubelleDuFoyer.type && user.poubelleDuFoyer.remplissage + user.dechets[i].volume <= user.poubelleDuFoyer.volume) {
+    if (allUser[id].dechets[i].type == allUser[id].poubelleDuFoyer.type && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[i].volume <= allUser[id].poubelleDuFoyer.volume) {
         P(semid, semnum);
-        user.poubelleDuFoyer.remplissage += user.dechets[i].volume;
-        user.dechets[i].volume = 0;
+        allUser[id].poubelleDuFoyer.remplissage += allUser[id].dechets[i].volume;
+        allUser[id].dechets[i].volume = 0;
         V(semid, semnum);
-        if (user.poubelleDuFoyer.type == MENAGER) user.facturation_bac++;
+        if (allUser[id].poubelleDuFoyer.type == MENAGER) allUser[id].facturation_bac++;
         return TRUE;
     }
-    else if (user.poubelleDuFoyer.type == MENAGER && user.poubelleDuFoyer.remplissage + user.dechets[i].volume > user.poubelleDuFoyer.volume) {
-        if (user.contrat == CLE_BAC) {
-
+    else if (allUser[id].poubelleDuFoyer.type == MENAGER && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[i].volume > allUser[id].poubelleDuFoyer.volume) {
+        if (allUser[id].contrat == CLE_BAC) {
+            srand ((unsigned) time(NULL)) ; // TODO
+            allUser[id].contrat = rand() % NOMBRE_COLLECTIVE + 1;
         return TRUE;
         }
     }
@@ -141,39 +143,43 @@ void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
     pthread_exit(NULL);
 }
 
-void *utiliser (void *data) { //Usager user){
+void compoFoyer (int id) {
 
-    Usager *usager = data;
+    if(allUser[id].foyer == 1)
+        allUser[id].poubelleDuFoyer.volume = 80;
+    else if (allUser[id].foyer == 2)
+        allUser[id].poubelleDuFoyer.volume = 120;
+    else if(allUser[id].foyer == 3 || allUser[id].foyer == 4)
+        allUser[id].poubelleDuFoyer.volume = 180;
+    else if (allUser[id].foyer >= 5)
+        allUser[id].poubelleDuFoyer.volume = 240;
+}
+
+void *utiliser (int *id) { //Usager user){
+
     int i, j, semid, semnum;
-    Dechet dechets[3];
-    dechets[0].type == MENAGER;
-    dechets[1].type == VERRE;
-    dechets[2].type == CARTON;
+    //initalisation des données utilisateur
+    srand ((unsigned) time(NULL)) ;
+    allUser[*id].contrat = rand() % 2 + 1;
+    allUser[*id].foyer = rand() % 6 + 1;
+    compoFoyer(*id);
+    allUser[*id].dechets[0].type == MENAGER;
+    allUser[*id].dechets[1].type == VERRE;
+    allUser[*id].dechets[2].type == CARTON;
     for (i = 0; i < JOURS; i++) {
         for ( j = 0; j < 3; i ++) {
             srand ((unsigned) time(NULL)) ;
-            dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 20L
-            if (remplirPoubelle(*usager, semid, semnum, dechets[j]) == FALSE) dechets[j].volume = 0;
-            //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
+            allUser[*id].dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 20L
+            if (remplirPoubelle(*id, semid, semnum) == FALSE) {
+                allUser[*id].dechets[j].volume = 0;
+                printf("L'utilisateur n°%d fait un depôt sauvage de %d L en plein milieu de la rue !!!\n", *id, allUser[*id].dechets[j].volume);
+                //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
+            }
         }
         usleep(500000);// Dort une demi-seconde pour simuler journée
     }
     //pthread_exit(&usager->addition);
-    free(usager);
     pthread_exit(NULL);
-}
-
-void compoFoyer (Usager user) {
-
-    if(user.foyer == 1)
-        user.poubelleDuFoyer.volume = 80;
-    if(user.foyer == 2)
-        user.poubelleDuFoyer.volume = 120;
-    if(user.foyer == 3 || user.foyer == 4){
-        user.poubelleDuFoyer.volume = 180;
-     }else if (user.foyer >= 5){
-        user.poubelleDuFoyer.volume = 240;
-     }
 }
 
 void displayConsole (int signal, Usager user) {
@@ -205,7 +211,7 @@ void displayFile (int signal, Usager user) {
 int main (int argc, char** argv) {
 
     int i, countCamion, rc, sem_id;
-    struct Use *use;
+    //struct Use *use;
     //struct sigaction action;
     /*
      * Mise des données du programme passeée en paremètre
@@ -220,6 +226,8 @@ int main (int argc, char** argv) {
     donnees[2] = atoi(argv[3]);
     donnees[3] = atoi(argv[4]);
     donnees[4] = atoi(argv[5]);
+    shmid_donnees = shmget(IPC_PRIVATE, (NOMBRE_VERRE + NOMBRE_COLLECTIVE + NOMBRE_CARTON)*sizeof(int), 0666);
+    allBin = (Poubelle *) shmat (shmid_donnees, NULL, 0);
     Usager usager[NOMBRE_USAGER];
     Ramasseur camion[NOMBRE_CAMION];
     pthread_t usager_id[NOMBRE_USAGER];
@@ -228,13 +236,13 @@ int main (int argc, char** argv) {
     shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
     allUser = (Usager *) shmat (shmid_user, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i++) {
-        use = malloc(sizeof(Usager));
-        rc = pthread_create (&usager_id[i], NULL, utiliser, use);
+        //use = malloc(sizeof(Usager));
+        rc = pthread_create (&usager_id[i], NULL, utiliser, &i);
         if (rc) {
             printf("ERROR ; return code from pthread_create() is %d\n",rc);
             exit(-1);
         }
-        free(use);
+        //free(use);
     }
     signal(SIGTSTP, displayConsole);
     signal(SIGKILL, displayFile);
