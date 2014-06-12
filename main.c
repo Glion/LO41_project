@@ -19,6 +19,9 @@
 #include <time.h>
 #include <signal.h>
 
+#define TRUE 1
+#define FALSE 0
+
 #define MENAGER 0
 #define VERRE 1
 #define CARTON 2
@@ -27,13 +30,17 @@
 #define CLE 1
 #define CLE_BAC 2
 
-#define NOMBRE_USAGER 100
-#define NOMBRE_CAMION 3
+#define NOMBRE_USAGER donnees[0]
+#define NOMBRE_CAMION donnees[1]
+#define NOMBRE_COLLECTIVE donnees[3]
+#define NOMBRE_VERRE donnees[4]
+#define NOMBRE_CARTON donnees[5]
 
 #define JOURS 30
 
-int shmid;
+int shmid_donnees, shmid_user;
 int shm_cle;
+int *donnees;
 
 int P (int SemId, int Nsem) {
 
@@ -49,7 +56,7 @@ int V (int SemId, int Nsem) {
     return semop(SemId, &SemBuf, 1) ;
 }
 
-// Les défférentes structures qui représente les différentes entités qui réagissent ensemble
+// Les différentes structures qui représente les différentes entités qui réagissent ensemble
 typedef struct dechet {
 
     int type;
@@ -93,7 +100,9 @@ typedef struct use {
     Usager usager;
 }Use;
 
-void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
+Usager *allUser;
+
+int remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
 
     int i;
     //mutex sur Poubelle.remplissage => ressource critique
@@ -103,11 +112,15 @@ void remplirPoubelle (Usager user, int semid, int semnum, Dechet dechets) {
         user.dechets[i].volume = 0;
         V(semid, semnum);
         if (user.poubelleDuFoyer.type == MENAGER) user.facturation_bac++;
+        return TRUE;
     }
     else if (user.poubelleDuFoyer.type == MENAGER && user.poubelleDuFoyer.remplissage + user.dechets[i].volume > user.poubelleDuFoyer.volume) {
         if (user.contrat == CLE_BAC) {
+
+        return TRUE;
         }
     }
+    return FALSE;
 }
 
 void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
@@ -129,7 +142,7 @@ void* viderPoubelle (void *data) {//Ramasseur camion, Poubelle poubellePleine) {
 
 void *utiliser (void *data) { //Usager user){
 
-    Use *use = data;
+    Usager *usager = data;
     int i, j, semid, semnum;
     Dechet dechets[3];
     dechets[0].type == MENAGER;
@@ -138,12 +151,13 @@ void *utiliser (void *data) { //Usager user){
     for (i = 0; i < JOURS; i++) {
         for ( j = 0; j < 3; i ++) {
             srand ((unsigned) time(NULL)) ;
-            dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 30L
-            remplirPoubelle(use->usager, semid, semnum, dechets[j]);
+            dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 20L
+            if (remplirPoubelle(*usager, semid, semnum, dechets[j]) == FALSE) dechets[j].volume = 0;
+            //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
         }
-        usleep(500000);// Dort une demi-seconde pour simuler le cycle Jour/nuit
+        usleep(500000);// Dort une demi-seconde pour simuler journée
     }
-    pthread_exit(&use->usager.addition);
+    pthread_exit(usager.addition);
 }
 
 void compoFoyer (Usager user) {
@@ -163,6 +177,7 @@ void displayConsole (int signal, Usager user) {
 
     int i, prixbac, prixcle, taille;
     for(i = 0; i < NOMBRE_USAGER; i++){
+        printf("Usager numéro %d doit payer : %f\n", ++i, (user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
     }
 }
 
@@ -177,22 +192,41 @@ void displayFile (int signal, Usager user) {
     fclose(facturation);
 }
 
-Usager *allUser;
-
+/*
+ * argv[1] : utilisateurs
+ * argv[2] : camions
+ * argv[3] : poubelle collective
+ * argv[4] : poubelle verre
+ * argv[5] : poubelle carton
+ */
 int main (int argc, char** argv) {
 
-    int i, countCamion, rc;
+    int i, countCamion, rc, sem_id;
+    struct Use *use;
+    /*
+     * Mise des données du programme passeée en paremètre
+     * dans des segments de mémoire partagée,
+     * pour un accès simplifié entre touts les
+     * processus/threads du programme
+     */
+    shmid_donnees = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
+    donnees = (int *) shmat (shmid_donnees, NULL, 0);
+    donnees[0] = atoi(argv[1]);
+    donnees[1] = atoi(argv[2]);
+    donnees[2] = atoi(argv[3]);
+    donnees[3] = atoi(argv[4]);
+    donnees[4] = atoi(argv[5]);
     Usager usager[NOMBRE_USAGER];
     Ramasseur camion[NOMBRE_CAMION];
-    struct Use *use;
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
-    shmid = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
-    allUser = (Usager *)shmat(shmid, NULL, 0);
+    sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
+    shmid_user = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
+    allUser = (Usager *) shmat (shmid_user, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i ++) {
         use = malloc(sizeof(Usager));
         rc = pthread_create (&usager_id[i], NULL, utiliser, use);
-        if(rc){
+        if (rc) {
             printf("ERROR ; return code from pthread_create() is %d\n",rc);
             exit(-1);
         }
@@ -205,11 +239,11 @@ int main (int argc, char** argv) {
     countCamion = 0;
     struct Ramasser *info;
     for (i = 0; i < NOMBRE_USAGER; ++i) {
-        if(usager[i].poubelleDuFoyer.remplissage > 0.8*usager[i].poubelleDuFoyer.volume){ //si poubelle pleine à 80%, le camion va vider les poubelles
-            if(countCamion < 3){
+        if (usager[i].poubelleDuFoyer.remplissage > 0.8*usager[i].poubelleDuFoyer.volume) { //si poubelle pleine à 80%, le camion va vider les poubelles
+            if (countCamion < 3) {
                 info = malloc(sizeof(info));
                 rc = pthread_create(&camion_id[i], NULL, viderPoubelle, info);
-                if(rc){
+                if (rc) {
                     printf("ERROR ; return code from pthread_create() is %d\n",rc);
                     exit(-1);
                 }
@@ -218,23 +252,21 @@ int main (int argc, char** argv) {
             }
         }
     }
-    // A tout moment envoyé un SIGSTOP, stop la simulation et affiche les contenus des poubelles
     // Créer Threads usager
     // Créer Threads camion de ramassage
     //processus Centre de tri qui gère les threads camion poubelle
     //processus Ville qui gère les threads usagers
     pthread_exit(NULL);
+    shmctl(shmid_donnees, IPC_RMID, NULL);
+    shmctl(shmid_user, IPC_RMID, NULL);
     return EXIT_SUCCESS;
 }
 
-/************************************************
- * TODO GLION :                                 *
- *                                              *
- * S'occupes de la partie centre de tri :       *
- * - envoyer les camions ramasser les poubelles *
- *   Lors du signal                             *
- * - incrémenter le compteur                    *
- *                                              *
- *   Ma partie est pas encore dans le fichier   *
- *   car elle bug, je m'en occupe rapidement    *
- ************************************************/
+// TODO
+// créer et terminer les threads proprement, y a une erreur ligne 160 ! (Glion je te laisse voir ça)
+// main.c:160:24: error: request for member ‘addition’ in something not a structure or union
+
+// utiliser la mémoire partager ( je m'en occupe, je suis en plein dessus, quasiment fini)
+// vérifier les signaux ( je m'en occupe, je suis en plein dessus )
+// réseaux de pétrie ... ( si t'es motivé x) )
+// fonctionnement de l'ensemble du programme, rien oublier ?
