@@ -104,11 +104,11 @@ Usager *allUser;
 Poubelle *allBin;
 Ramasseur *allTrucks;
 
-int remplirPoubelle (int id, int semid, int semnum) {
+int remplirPoubelle (int id, int type, int semid, int semnum) {
 
     int i;
     //mutex sur Poubelle.remplissage => ressource critique
-    if (allUser[id].dechets[i].type == allUser[id].poubelleDuFoyer.type && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[i].volume <= allUser[id].poubelleDuFoyer.volume) {
+    if (allUser[id].dechets[type].type == allUser[id].poubelleDuFoyer.type && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[i].volume <= allUser[id].poubelleDuFoyer.volume) {
         P(semid, semnum);
         allUser[id].poubelleDuFoyer.remplissage += allUser[id].dechets[i].volume;
         allUser[id].dechets[i].volume = 0;
@@ -166,15 +166,19 @@ void *utiliser (void *num) { //Usager user){
     srand ((unsigned) time(NULL)) ;
     allUser[*id].contrat = rand() % 2 + 1;
     allUser[*id].foyer = rand() % 6 + 1;
-    compoFoyer(*id);
     allUser[*id].dechets[0].type == MENAGER;
     allUser[*id].dechets[1].type == VERRE;
     allUser[*id].dechets[2].type == CARTON;
+    if(allUser[*id].contrat == 0 || allUser[*id].contrat == 2){
+        allUser[*id].poubelleDuFoyer.remplissage = 0;
+        compoFoyer(*id);
+        allUser[*id].poubelleDuFoyer.type = MENAGER;
+    }
     for (i = 0; i < JOURS; i++) {
         for ( j = 0; j < 3; i ++) {
             srand ((unsigned) time(NULL)) ;
             allUser[*id].dechets[j].volume = rand() % 20 + 1; // Génére des déchets de O à 20L
-            if (remplirPoubelle(*id, semid, semnum) == FALSE) {
+            if (remplirPoubelle(*id, allUser[*id].dechets[j].type, semid, semnum) == FALSE) {
                 allUser[*id].dechets[j].volume = 0;
                 printf("L'utilisateur n°%d fait un depôt sauvage de %d L en plein milieu de la rue !!!\n", *id, allUser[*id].dechets[j].volume);
                 //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
@@ -301,6 +305,7 @@ int main (int argc, char** argv) {
 
 //initialiser les poubelles XXX
 //refaire la gestion des camions XXX
+//envoie du signaux sigusr1 poubelles(SIGUSR1) à Camion
 // créer et terminer les threads proprement
 // vérifier les signaux ( je m'en occupe, je suis en plein dessus )
 // réseaux de pétrie ... ( si t'es motivé x) )
