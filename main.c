@@ -239,13 +239,13 @@ void *eboueur (void *num) {
     //ViderPoubelle(*id, data);
 }
 
-void displayFile (int signal, Usager user) {
+void displayFile (int signal) {
 
     FILE *facturation;
     facturation = fopen("facturation.txt", "w");
     int i, prixbac, prixcle, taille;
     for(i = 0; i < NOMBRE_USAGER; i++){
-        fprintf(facturation, "Usager numéro %d doit payer : %f\n", ++i, (float)(user.facturation_bac*prixbac*taille + user.facturation_cle*prixcle));
+        fprintf(facturation, "Usager numéro %d doit payer : %f\n", ++i, (float)(allUser[i].facturation_bac*prixbac*taille + allUser[i].facturation_cle*prixcle));
     }
     fclose(facturation);
 }
@@ -313,7 +313,7 @@ int main (int argc, char** argv) {
         }
         //free(use);
     }
-    //signal(SIGKILL, displayFile);XXX
+    signal(SIGKILL, displayFile);
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
     countCamion = 0;
     for (i = 0; i < NOMBRE_USAGER; ++i) {
@@ -345,7 +345,6 @@ int main (int argc, char** argv) {
 
 // TODO
 
-//initialiser les poubelles XXX
 //refaire la gestion des camions XXX
 //envoie du signaux sigusr1 poubelles(SIGUSR1) à Camion
 // créer et terminer les threads proprement
