@@ -210,12 +210,12 @@ void *utiliser (void *num) { //Usager user){
             srand ((unsigned) time(NULL)) ;
             allUser[*id].dechets[j].volume = (rand() % 20 + 1); // Génére des déchets de O à 20L
             if (remplirPoubelle(*id, allUser[*id].dechets[j].type, semid, semnum) == FALSE) {
-                allUser[*id].dechets[j].volume = 0;
                 printf("L'utilisateur n°%d fait un depôt sauvage de %d L en plein milieu de la rue !!!\n", *id, allUser[*id].dechets[j].volume);
+                allUser[*id].dechets[j].volume = 0;
                 //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
             }
         }
-        usleep(500000);// Dort une demi-seconde pour simuler journée
+        sleep(0.5);// Dort une demi-seconde pour simuler journée
     }
     //pthread_exit(&usager->addition);
     pthread_exit(NULL);
