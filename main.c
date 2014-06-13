@@ -283,6 +283,10 @@ int main (int argc, char** argv) {
      * pour un accès simplifié entre touts les
      * processus/threads du programme
      */
+     if (argc != 6) {
+        printf("Erreur dans l'entrée des paramètres ! \n");
+        return EXIT_FAILURE;
+     }
     shmid_donnees = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
     donnees = (int *) shmat (shmid_donnees, NULL, 0);
     donnees[0] = atoi(argv[1]);
