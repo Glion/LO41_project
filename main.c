@@ -227,14 +227,15 @@ void *eboueur (void *num) {
     int i, j, semid, semnum;
     allTrucks[*id].capaCamion = 3000;
     allTrucks[*id].remplissage = 0;
-    if ( (float)(NOMBRE_CAMION/(*id)) <= 0.2 ){
-        allTrucks[*id].type == CARTON;
+    Poubelle poubelle; // poubelle qui envoie le signal
+    if ( allTrucks[*id].remplissage == 0 ){
+        allTrucks[*id].type == poubelle.type; 
     }
-    else if ( (float)(NOMBRE_CAMION/(*id)) <= 0.4 ) {
-        allTrucks[*id].type == VERRE;
-    }
-    else{
-        allTrucks[*id].type == MENAGER;
+    if(allTrucks[*id].remplissage < (allTrucks[*id].capaCamion)*0.8){
+        Ramasser *ram;
+        ram->camion = allTrucks[*id];
+        ram->poubellePleine = poubelle;
+        viderPoubelle(*id, ram);
     }
     //ViderPoubelle(*id, data);
 }
@@ -284,7 +285,12 @@ int main (int argc, char** argv) {
      * processus/threads du programme
      */
      if (argc != 6) {
-        printf("Erreur dans l'entrée des paramètres ! \n");
+        printf("*********Erreur dans l'entrée des paramètres !*************\n");
+        printf("argv[1] : Nombre d'utilisateurs \n");
+        printf("argv[2] : Nombre de camions \n");
+        printf("argv[3] : Nombre de poubelles collectives \n");
+        printf("argv[4] : Nombre de poubelles à verre \n");
+        printf("argv[5] : Nombre de poubelles à carton \n");
         return EXIT_FAILURE;
      }
     shmid_donnees = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
