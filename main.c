@@ -127,7 +127,7 @@ int remplirPoubelle (int id, int semid, int semnum) {
     return FALSE;
 }
 
-void* viderPoubelle () {//Ramasseur camion, Poubelle poubellePleine) {
+void* viderPoubelle (int id, Ramasser *data) {//Ramasseur camion, Poubelle poubellePleine) {
 
     int semid, semnum;
     Ramasser *ramasser = data;
@@ -137,6 +137,7 @@ void* viderPoubelle () {//Ramasseur camion, Poubelle poubellePleine) {
         ramasser->camion.remplissage += ramasser->poubellePleine.remplissage;
         ramasser->poubellePleine.remplissage = 0;
         V(semid, semnum);
+        printf("Le camion n°%d vient de vider la poubelle !", id);
     }
     else {
         printf("error : Wrong bin type\n");
@@ -157,8 +158,9 @@ void compoFoyer (int id) {
         allUser[id].poubelleDuFoyer.volume = 240;
 }
 
-void *utiliser (int *id) { //Usager user){
+void *utiliser (void *num) { //Usager user){
 
+    int *id = (int*) num;
     int i, j, semid, semnum;
     //initalisation des données utilisateur
     srand ((unsigned) time(NULL)) ;
@@ -182,6 +184,24 @@ void *utiliser (int *id) { //Usager user){
     }
     //pthread_exit(&usager->addition);
     pthread_exit(NULL);
+}
+
+void *eboueur (void *num) {
+
+    int *id = (int *)num;
+    int i, j, semid, semnum;
+    allTrucks[*id].capaCamion = 3000;
+    allTrucks[*id].remplissage = 0;
+    if ( (float)(NOMBRE_CAMION/(*id)) <= 0.2 ){
+        allTrucks[*id].type == CARTON;
+    }
+    else if ( (float)(NOMBRE_CAMION/(*id)) <= 0.4 ) {
+        allTrucks[*id].type == VERRE;
+    }
+    else{
+        allTrucks[*id].type == MENAGER;
+    }
+    //ViderPoubelle(*id, data);
 }
 
 void displayConsole (int signal, Usager user) {
@@ -231,7 +251,7 @@ int main (int argc, char** argv) {
     shmid_poubelles = shmget(IPC_PRIVATE, (NOMBRE_VERRE + NOMBRE_COLLECTIVE + NOMBRE_CARTON)*sizeof(int), 0666);
     allBin = (Poubelle *) shmat (shmid_donnees, NULL, 0);
     shmid_camions = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
-    allTrucks = (int *) shmat (shmid_donnees, NULL, 0);
+    allTrucks = (Ramasseur *) shmat (shmid_donnees, NULL, 0);
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
     sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
@@ -239,22 +259,22 @@ int main (int argc, char** argv) {
     allUser = (Usager *) shmat (shmid_users, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i++) {
         //use = malloc(sizeof(Usager));
-        rc = pthread_create (&usager_id[i], NULL, utiliser, &i);
+        rc = pthread_create (&usager_id[i], NULL, utiliser, (void *) &i);
         if (rc) {
             printf("ERROR ; return code from pthread_create() is %d\n",rc);
             exit(-1);
         }
         //free(use);
     }
-    signal(SIGTSTP, displayConsole);
-    signal(SIGKILL, displayFile);
+    //signal(SIGTSTP, displayConsole);
+    //signal(SIGKILL, displayFile);XXX
     //LORSQUE POUBELLE PLEINE envoi un signal SIGUSR1 au centre de tri, pour vider la poubelle
     countCamion = 0;
     for (i = 0; i < NOMBRE_USAGER; ++i) {
         if (allUser[i].poubelleDuFoyer.remplissage > 0.8*allUser[i].poubelleDuFoyer.volume) { //si poubelle pleine à 80%, le camion va vider les poubelles
             if (countCamion < 3) {
                 //info = malloc(sizeof(info));
-                rc = pthread_create(&camion_id[i], NULL, viderPoubelle, NULL/*TODO*/);
+                rc = pthread_create(&camion_id[i], NULL, eboueur, NULL/*TODO*/);
                 if (rc) {
                     printf("ERROR ; return code from pthread_create() is %d\n",rc);
                     exit(-1);
