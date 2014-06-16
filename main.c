@@ -100,25 +100,25 @@ Poubelle *allBin;
 Ramasseur *allTrucks;
 void viderPoubelle (Poubelle *p, int id, int usager) ;
 
-int remplirPoubelle (int id, int type, int semid, int semnum) {
+int remplirPoubelle (int *id, int type, int semid, int semnum) {
 
-    if (allUser[id].dechets[type].type == allUser[id].poubelleDuFoyer.type && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[type].volume <= allUser[id].poubelleDuFoyer.volume && (allUser[id].contrat == BAC || allUser[id].contrat == CLE_BAC)) { //déchets ménager dans poubelle foyer
+    if (allUser[*id].dechets[type].type == allUser[*id].poubelleDuFoyer.type && allUser[*id].poubelleDuFoyer.remplissage + allUser[*id].dechets[type].volume <= allUser[*id].poubelleDuFoyer.volume && (allUser[*id].contrat == BAC || allUser[*id].contrat == CLE_BAC)) { //déchets ménager dans poubelle foyer
         P(semid, semnum);
-        allUser[id].poubelleDuFoyer.remplissage += allUser[id].dechets[type].volume;
-        printf("L'usager %d a déposé %d L de d'ordure dans sa propre poubelle\n", id, allUser[id].dechets[type].volume);
-        allUser[id].dechets[type].volume = 0;
+        allUser[*id].poubelleDuFoyer.remplissage += allUser[*id].dechets[type].volume;
+        printf("L'usager %d a déposé %d L de d'ordure dans sa propre poubelle\n", *id, allUser[*id].dechets[type].volume);
+        allUser[*id].dechets[type].volume = 0;
         V(semid, semnum);
 //        if (( (float)allUser[id].poubelleDuFoyer.remplissage / (float)allUser[id].poubelleDuFoyer.volume) > 0.7 ) signal(SIGUSR1, viderPoubelle);
         return TRUE;
     }
-    else if ((allUser[id].contrat == CLE || allUser[id].contrat == CLE_BAC) && allUser[id].dechets[type].type == MENAGER) {//déchets ménager dans bac collectif
+    else if ((allUser[*id].contrat == CLE || allUser[*id].contrat == CLE_BAC) && allUser[*id].dechets[type].type == MENAGER) {//déchets ménager dans bac collectif
         srand ((unsigned) time(NULL)) ;
         int poubelle = (rand() % NOMBRE_COLLECTIVE + 1);
-        if (allBin[poubelle].remplissage + allUser[id].dechets[type].volume < allBin[poubelle].volume) {
-            allBin[poubelle].remplissage += allUser[id].dechets[type].volume;
-            printf("L'usager %d a déposé %d L d'ordure dans une poubelle collective.\n", id, allUser[id].dechets[type].volume);
-            allUser[id].dechets[type].volume = 0;
-            allUser[id].facturation_bac++;
+        if (allBin[poubelle].remplissage + allUser[*id].dechets[type].volume < allBin[poubelle].volume) {
+            allBin[poubelle].remplissage += allUser[*id].dechets[type].volume;
+            printf("L'usager %d a déposé %d L d'ordure dans une poubelle collective.\n", *id, allUser[*id].dechets[type].volume);
+            allUser[*id].dechets[type].volume = 0;
+            allUser[*id].facturation_bac++;
 //            if (( (float)allBin[id].remplissage / (float)allBin[id].volume) > 0.7 ) signal(SIGUSR1, viderPoubelle);
             return TRUE;
         }
@@ -126,13 +126,13 @@ int remplirPoubelle (int id, int type, int semid, int semnum) {
             return FALSE;
         }
     }
-    else if (allUser[id].dechets[type].type == VERRE) { // dechets en verre
+    else if (allUser[*id].dechets[type].type == VERRE) { // dechets en verre
         srand ((unsigned) time(NULL)) ;
         int poubelle = (rand() % NOMBRE_VERRE + 1) + NOMBRE_COLLECTIVE;
-        if (allBin[poubelle].remplissage + allUser[id].dechets[type].volume < allBin[poubelle].volume) {
-            allBin[poubelle].remplissage += allUser[id].dechets[type].volume;
-            printf("L'usager %d a déposé %d L d'ordure dans une poubelle verre.\n", id, allUser[id].dechets[type].volume);
-            allUser[id].dechets[type].volume = 0;
+        if (allBin[poubelle].remplissage + allUser[*id].dechets[type].volume < allBin[poubelle].volume) {
+            allBin[poubelle].remplissage += allUser[*id].dechets[type].volume;
+            printf("L'usager %d a déposé %d L d'ordure dans une poubelle verre.\n", *id, allUser[*id].dechets[type].volume);
+            allUser[*id].dechets[type].volume = 0;
 //            if (( (float)allBin[id].remplissage / (float)allBin[id].volume) > 0.7 ) signal(SIGUSR1, viderPoubelle);
             return TRUE;
         }
@@ -140,13 +140,13 @@ int remplirPoubelle (int id, int type, int semid, int semnum) {
             return FALSE;
         }
     }
-    else if (allUser[id].dechets[type].type == CARTON) {//déchets en carton
+    else if (allUser[*id].dechets[type].type == CARTON) {//déchets en carton
         srand ((unsigned) time(NULL)) ;
         int poubelle = (rand() % NOMBRE_CARTON + 1) + NOMBRE_COLLECTIVE + NOMBRE_VERRE;
-        if (allBin[poubelle].remplissage + allUser[id].dechets[type].volume < allBin[poubelle].volume) {
-            allBin[poubelle].remplissage += allUser[id].dechets[type].volume;
-            printf("L'usager %d a déposé %d L d'ordure dans une poubelle carton.\n", id, allUser[id].dechets[type].volume);
-            allUser[id].dechets[type].volume = 0;
+        if (allBin[poubelle].remplissage + allUser[*id].dechets[type].volume < allBin[poubelle].volume) {
+            allBin[poubelle].remplissage += allUser[*id].dechets[type].volume;
+            printf("L'usager %d a déposé %d L d'ordure dans une poubelle carton.\n", *id, allUser[*id].dechets[type].volume);
+            allUser[*id].dechets[type].volume = 0;
 //            if (( (float)allBin[id].remplissage / (float)allBin[id].volume) > 0.7 ) signal(SIGUSR1, viderPoubelle);
             return TRUE;
         }
@@ -197,10 +197,12 @@ void *utiliser (void *num) { //Usager user){
     }
     // lancement de son activité
     for (i = 0; i < JOURS; i++) {
+        printf("Jour n°%d\n",i );
         for ( j = 0; j < 3; j++) {
             srand ((unsigned) time(NULL)) ;
             allUser[*id].dechets[j].volume = (rand() % 20 + 1); // Génére des déchets de O à 20L
-            if (remplirPoubelle(*id, allUser[*id].dechets[j].type, semid, semnum) == FALSE) {
+            printf("volume des dechets de l'utilisateur %d à la journée %d : %d\n",*id,i,allUser[*id].dechets[j].volume);
+            if (remplirPoubelle(id, allUser[*id].dechets[j].type, semid, semnum) == FALSE) {
                 printf("L'utilisateur n°%d fait un depôt sauvage de %d L en plein milieu de la rue !!!\n", *id, allUser[*id].dechets[j].volume);
                 allUser[*id].dechets[j].volume = 0;
                 //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...

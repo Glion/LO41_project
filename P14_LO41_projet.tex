@@ -9,45 +9,73 @@
 \author{Simon MAGNIN-FEYSOT\\
 		Aurélie PELLIGAND}
 \date{\today}
+%Responsable de l'UV : Philippe DESCAMPS
+%Printemps 2014
 
 %%%%%%%%Début du document %%%%%%
 \begin{document}
+\begin{titlepage}
 \maketitle
-\begin{abstract}
-Voici le rapport du projet de LO41 sur la gestion des déchets.
+\begin{abstract}Ce rapport illustre notre projet de l'UV LO41 concernant la gestion des déchets dans une commune. Il comporte des précisions générales sur l'ensemble du projet. Le projet consiste à définir et simuler le comportement de tous les acteurs (usagers, type de déchets, poubelles, centre de tri,service de ramassage, etc.) et de montrer leurs interactions.
+
 \end{abstract}
+\tableofcontents
+\thispagestyle{empty}
+\end{titlepage}
 
 %%%%%%%%%%%% INTRODUCTION %%%%%%%%%%%%%%%
-
 \section{Introduction}
-\paragraph{}Alors que le coût de la gestion des déchets augmente dans toutes les collectivités, certaines d'entre elles font rimer optimisation de leur dépenses avec innovation technologiques. Dans le cadre de la levée individuelle, chaque poubelle est dotée d'une puce qui évalue, pour chaque foyer, les quantités de déchets générés via un système de facturation expérimentale comptabilisant le nombre de fois où le vac est vidé.Pour ceux qui privilégient le dépôt à la borne collective, ils se voient alors remettre une clé qui leur permettra d'ouvrir le container. Dans la pratique, l’usager peut choisir entre 3 modes : (1) bac seul ; (2) clé seule ; (3) bac et clé. Si l’usager choisit la clé, il devra utiliser obligatoirement des sacs de 30 litres (capacité maximum des bornes). Si l’usager choisit le bac, sa taille dépendra de la composition du foyer selon le principe suivant :
+\setcounter{page}{1}
+Dans le cadre de l'UV LO41, intitulée Architecture et utilisation des systèmes d'exploitation, nous avons été amenés à développer ce projet permettant de mettre en avant nos compétences acquises au cours du semestre. \\
+
+Les notions de processus, de synchronisation interprocessus, de gestion de ressources, des files de messages, mémoires partagée, des sémaphores, des threads, des mutex, des moniteurs et des signaux vont être utilisées dans notre projet.\\
+
+Ce projet concerne la réalisation d'un gestionnaire de déchets dans une commune. Afin de partir sur de bonnes bases, nous avons conçu un réseau de pétri pour bien comprendre les intéractions entre les différents acteurs, ce qui permet une meilleure compréhension pour la programmation en C du projet.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Enoncé}
+\paragraph{}Alors que le coût de la gestion des déchets augmente dans toutes les collectivités, certaines d'entre elles font rimer optimisation de leur dépenses avec innovation technologiques. Dans le cadre de la levée individuelle, chaque poubelle est dotée d'une puce qui évalue, pour chaque foyer, les quantités de déchets générés via un système de facturation expérimentale comptabilisant le nombre de fois où le vac est vidé.\\
+
+Pour ceux qui privilégient le dépôt à la borne collective, ils se voient alors remettre une clé qui leur permettra d'ouvrir le container. Dans la pratique, l’usager peut choisir entre 3 modes : (1) bac seul ; (2) clé seule ; (3) bac et clé. Si l’usager choisit la clé, il devra utiliser obligatoirement des sacs de 30 litres (capacité maximum des bornes). Si l’usager choisit le bac, sa taille dépendra de la composition du foyer selon le principe suivant :
 \begin{itemize}
 \item 1 personne: 80 litres
 \item 2 personnes: 120 litres
 \item 3 et 4 personnes: 180 litres
 \item 5 personnes et plus: 240 litres
 \end{itemize}
-Des points tri sont répartis sur la commune. Pour le papier, le verre et les emballages ménagers : l’accès à la borne est libre. Pour déposer les ordures ménagères dans les bornes à tambour, l’usager peut s ‘équiper d’une clé. Dans le cas où l’utilisateur ne peut pas suivre le calendrier des collectes, il peut bénéficier d’un service en apport volontaire, à la place ou en plus du bac individuel.
-\paragraph{}Les poubelles sont dotées de capteurs facilitant le pesage et d’un système qui communique avec le service de ramassage. Cette solution facilite l’identification des points de collectes et en conséquence identifie les centres de collectes les plus critiques. Il appartiendra donc à la mairie de s’adapter aux conditions de collecte en fonction des périodes de l’année.
 
-\paragraph{}Le projet consiste à définir et simuler le comportement tous les acteurs (usagers, type de déchets, poubelles, centre de tri,service de ramassage, etc.) et de montrer leurs interactions.
+\paragraph{}Des points tri sont répartis sur la commune. Pour le papier, le verre et les emballages ménagers : l’accès à la borne est libre. Pour déposer les ordures ménagères dans les bornes à tambour, l’usager peut s ‘équiper d’une clé. Dans le cas où l’utilisateur ne peut pas suivre le calendrier des collectes, il peut bénéficier d’un service en apport volontaire, à la place ou en plus du bac individuel.
+\paragraph{}Les poubelles sont dotées de capteurs facilitant le pesage et d’un système qui communique avec le service de ramassage. Cette solution facilite l’identification des points de collectes et en conséquence identifie les centres de collectes les plus critiques. Il appartiendra donc à la mairie de s’adapter aux conditions de collecte en fonction des périodes de l’année.
+\paragraph{}Le projet consiste donc à définir et simuler le comportement de tous les acteurs (usagers, type de déchets, poubelles, centre de tri,service de ramassage, etc.) et de montrer leurs interactions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Analyse}
-\paragraph{}
+\subsection{Compréhension du sujet}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Réseau de Pétrie}
+\subsection{Réseaux de pétri}
+\paragraph{} Réseaux de pétri pour un utilisateur : 
+\begin{enumerate}
+\item création utilisateur 
+\item va devant chez lui
+\item veut jeter une poubelle (menager, verre, carton, collective)
+\item remplir poubelle si le remplissage de la poubelle (de type menager, verre, carton ou collective) < 80\% et si l'utilisateur a la clé ou clé bac pour les poubelles de type ménager
+\end{enumerate}
+
+\subsection{Explications du code}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Scenario test}
+\paragraph{}Nous allons maintenant voir quelques exemples d'utilisations. Nous simulons un ramassage des poubelles pendant une période de 30 jours.
 
+\paragraph{}Pour 4 utilisateurs, 2 camions de poubelles, 1 poubelle collective, 1 poubelle à carton et 1 poubelle en verre.
+
+\paragraph{}Pour 100 utilisateurs, 5 camions de poubelles, 3 poubelle collective, 3 poubelle à carton et 3 poubelle en verre.
 
 %%%%%%%%%%%% conclusion %%%%%%%%%%%%%%%
 \section{Conclusion}
-\paragraph{}Ce projet a été fortement intéressant cela a été l'occasion de pouvoir mettre en pratique sur un cas concret les concepts vu tout au long du semestre : les threads, les mutex, les files de messages...
-
+\paragraph{}Ce projet a été fortement intéressant cela a été l'occasion de pouvoir mettre en pratique sur un cas concret les concepts vu tout au long du semestre : les threads, les mutex, les files de messages... Nous avons su respecter le cahier des charges donné par l'énoncé. La solution que nous avons présentée nous paraît adéquate par rapport au problème posé. Nous avons mis en place un travail de groupe efficace grâce au partage du code des fichiers via Git.
 \paragraph{}Nous aurions pu nous amuser à faire un algortihme de djikstra pour optimiser le voyage du camion poubelles.
 
 \end{document}
