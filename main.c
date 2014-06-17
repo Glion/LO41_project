@@ -36,13 +36,14 @@
 #define NOMBRE_VERRE donnees[4]
 #define NOMBRE_CARTON donnees[5]
 
-#define JOURS 30
+#define JOURS 365
 
 int shmid_donnees, shmid_users, shmid_poubelles, shmid_camions;
 int shm_cle;
 int *donnees;
 pthread_mutex_t mutex_utilisateur = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_camion = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_poubelle = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_poubelle_collective = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t attente;
 
@@ -58,7 +59,6 @@ typedef struct poubelle {
     int type; // same as dechet
     int volume;
     int remplissage;
-    pthread_mutex_t mutex_poubelle;
 }Poubelle;
 
 typedef struct ramasseur {
@@ -67,7 +67,6 @@ typedef struct ramasseur {
     int capaCamion;
     int tournee[100];
     int type; //type de dechets dont il s'occupe
-    pthread_cond_t condition;
 }Ramasseur;
 
 typedef struct usager {
@@ -95,23 +94,22 @@ void viderPoubelle (Poubelle *p, int id, int usager) ;
 
 int remplirPoubelle (int id, int type, int semid, int semnum) {
 
-    int choix;
     if (allUser[id].dechets[type].type == allUser[id].poubelleDuFoyer.type && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[type].volume <= allUser[id].poubelleDuFoyer.volume && (allUser[id].contrat == BAC || allUser[id].contrat == CLE_BAC)) { //déchets ménager dans poubelle foyer
-        pthread_mutex_lock(&allUser[id].poubelleDuFoyer.mutex_poubelle);
+        pthread_mutex_lock(&mutex_poubelle);
         allUser[id].poubelleDuFoyer.remplissage += allUser[id].dechets[type].volume;
         printf("L'usager %d a déposé %d L de d'ordure dans sa propre poubelle\n", id, allUser[id].dechets[type].volume);
         allUser[id].dechets[type].volume = 0;
         if (( (float)allUser[id].poubelleDuFoyer.remplissage / (float)allUser[id].poubelleDuFoyer.volume) > 0.7 ) {
             pthread_cond_signal(&attente);
         }
-        pthread_mutex_unlock(&allUser[id].poubelleDuFoyer.mutex_poubelle);
+        pthread_mutex_unlock(&mutex_poubelle);
         return TRUE;
     }
     else if ((allUser[id].contrat == CLE || allUser[id].contrat == CLE_BAC) && allUser[id].dechets[type].type == MENAGER) {//déchets ménager dans bac collectif
         srand ((int) time(NULL)) ;
         int poubelle = rand() % NOMBRE_COLLECTIVE + 1;
         if (allBin[poubelle].remplissage + allUser[id].dechets[type].volume < allBin[poubelle].volume) {
-            pthread_mutex_lock(&allBin[poubelle].mutex_poubelle);
+            pthread_mutex_lock(&mutex_poubelle_collective);
             allBin[poubelle].remplissage += allUser[id].dechets[type].volume;
             printf("L'usager %d a déposé %d L d'ordure dans une poubelle collective.\n", id, allUser[id].dechets[type].volume);
             allUser[id].dechets[type].volume = 0;
@@ -119,7 +117,7 @@ int remplirPoubelle (int id, int type, int semid, int semnum) {
             if (( (float)allBin[poubelle].remplissage / (float)allBin[id].volume) > 0.7 ) {
                 pthread_cond_signal(&attente);
             }
-            pthread_mutex_unlock(&allBin[poubelle].mutex_poubelle);
+            pthread_mutex_unlock(&mutex_poubelle_collective);
             return TRUE;
         }
         else {
@@ -130,14 +128,14 @@ int remplirPoubelle (int id, int type, int semid, int semnum) {
         srand ((unsigned) time(NULL)) ;
         int poubelle = (rand() % NOMBRE_VERRE + 1) + NOMBRE_COLLECTIVE;
         if (allBin[poubelle].remplissage + allUser[id].dechets[type].volume < allBin[poubelle].volume) {
-            pthread_mutex_lock(&allBin[poubelle].mutex_poubelle);
+            pthread_mutex_lock(&mutex_poubelle_collective);
             allBin[poubelle].remplissage += allUser[id].dechets[type].volume;
             printf("L'usager %d a déposé %d L d'ordure dans une poubelle verre.\n", id, allUser[id].dechets[type].volume);
             allUser[id].dechets[type].volume = 0;
             if (( (float)allBin[poubelle].remplissage / (float)allBin[id].volume) > 0.7 ) {
                 pthread_cond_signal(&attente);
             }
-            pthread_mutex_unlock(&allBin[poubelle].mutex_poubelle);
+            pthread_mutex_unlock(&mutex_poubelle_collective);
             return TRUE;
         }
         else {
@@ -148,16 +146,14 @@ int remplirPoubelle (int id, int type, int semid, int semnum) {
         srand ((unsigned) time(NULL)) ;
         int poubelle = (rand() % NOMBRE_CARTON + 1) + NOMBRE_COLLECTIVE + NOMBRE_VERRE;
         if (allBin[poubelle].remplissage + allUser[id].dechets[type].volume < allBin[poubelle].volume) {
-            pthread_mutex_lock(&allBin[poubelle].mutex_poubelle);
+            pthread_mutex_lock(&mutex_poubelle_collective);
             allBin[poubelle].remplissage += allUser[id].dechets[type].volume;
             printf("L'usager %d a déposé %d L d'ordure dans une poubelle carton.\n", id, allUser[id].dechets[type].volume);
             allUser[id].dechets[type].volume = 0;
             if (( (float)allBin[poubelle].remplissage / (float)allBin[id].volume) > 0.7 ) {
-                srand ((unsigned) time(NULL)) ;
-                choix = rand() % NOMBRE_CAMION + 1;
                 pthread_cond_signal(&attente);
             }
-            pthread_mutex_unlock(&allBin[poubelle].mutex_poubelle);
+            pthread_mutex_unlock(&mutex_poubelle_collective);
             return TRUE;
         }
         else {
@@ -168,12 +164,9 @@ int remplirPoubelle (int id, int type, int semid, int semnum) {
 }
 
 void viderPoubelle (Poubelle *p, int id, int usager) {//Ramasseur camion, Poubelle poubellePleine) {
-
+    printf("Camion n°%d vide la poubelle\n", id);
     allTrucks[id].remplissage += p->remplissage;
     p->remplissage = 0;
-    if (usager) {
-        //facturation
-    }
 }
 
 void compoFoyer (int id) {
@@ -194,7 +187,6 @@ void *utiliser (void *num) {
     printf("Création de l'utilisateur n°%d\n", id);
     pthread_mutex_unlock(&mutex_utilisateur);
     int k, j, semid, semnum;
-    pthread_mutex_init(&allUser[id].poubelleDuFoyer.mutex_poubelle, NULL);
     //initalisation des données utilisateur
     srand ((int) time(NULL)) ;
     allUser[id].contrat = rand() % 2 + 1;
@@ -221,6 +213,7 @@ void *utiliser (void *num) {
             //    printf("ERROR\n");
         }
         sleep(1);// Dort une seconde pour simuler journée et permettre un affichage agréable en console
+        printf("Jour %d \n", j);
     }
     //pthread_exit(&usager->addition);
     pthread_exit(NULL);
@@ -230,15 +223,17 @@ void *eboueur (void *num) { //Thread Camions
 
     int id = (int) *((int *)num);
     printf("création du camion n°%d\n", id);
-    int l = 0, j, semid, semnum;
     pthread_mutex_unlock(&mutex_camion);
+    int l = 0, j, semid, semnum;
     allTrucks[id].capaCamion = 3000; //initialisation
     allTrucks[id].remplissage = 0;
     Poubelle *poubelleAVider;
     pause();
     srand ((int) time(NULL)) ;
-    int choix = rand() % 2 + 1;
+    //int choix = rand() % 2 + 1;
+    int choix = 2;
     if (choix == 1) {// s'occupe des poubelles collectives
+        pthread_cond_wait(&attente, &mutex_poubelle_collective);
         while (allTrucks[id].type == -1) {
             if ((float)allBin[l].remplissage / (float)allBin[l].volume > 0.7) {
                 printf("camion n°%d, vide une poubelle\n", id);
@@ -258,6 +253,7 @@ void *eboueur (void *num) { //Thread Camions
         }
     }
     else{//s'occupe des poubelles personnelles
+        pthread_cond_wait(&attente, &mutex_poubelle);
         allTrucks[id].type = MENAGER;
         while (allTrucks[id].remplissage <= 2300) {
             for (l = 0; l < (NOMBRE_USAGER); l ++) {
@@ -272,15 +268,12 @@ void *eboueur (void *num) { //Thread Camions
     pthread_exit(NULL);
 }
 
-void displayFile (int signal) {//création du fichier pour les facturations clients
+void fin (int signal) {//création du fichier pour les facturations clients
 
-    FILE *facturation;
-    facturation = fopen("facturation.txt", "w");
-    int i;
-    for (i = 0; i < NOMBRE_USAGER; i++) {
-        fprintf(facturation, "Usager numéro %d doit payer : %f\n", ++i, (float)(allUser[i].facturation_bac*3*allUser[i].poubelleDuFoyer.volume/10 + allUser[i].facturation_cle*5));
-    }
-    fclose(facturation);
+    pthread_mutex_destroy(&mutex_poubelle);
+    pthread_mutex_destroy(&mutex_poubelle_collective);
+    pthread_mutex_destroy(&mutex_utilisateur);
+    pthread_mutex_destroy(&mutex_camion);
     shmctl(shmid_donnees, IPC_RMID, NULL);
     shmctl(shmid_users, IPC_RMID, NULL);
     shmctl(shmid_poubelles, IPC_RMID, NULL);
@@ -314,9 +307,9 @@ int main (int argc, char** argv) {
 
     int a;
     pid_t pid_ramassage;
-    int i, e;
+    int i, e = 0;
     int countCamion, rc, sem_id;
-    signal(SIGINT, displayFile);
+    signal(SIGINT, fin);
     /*
      * Mise des données du programme passeée en paremètre
      * dans des segments de mémoire partagée,
@@ -367,10 +360,20 @@ int main (int argc, char** argv) {
             exit(-1);
         }
     }
-    pthread_exit(NULL);
+    for (i=0; i < NOMBRE_USAGER; i++) {
+        pthread_join(usager_id[i], NULL);
+    }
+    for (i=0; i < NOMBRE_CAMION; i++) {
+        pthread_join(camion_id[i], NULL);
+    }
+    pthread_mutex_destroy(&mutex_poubelle);
+    pthread_mutex_destroy(&mutex_poubelle_collective);
+    pthread_mutex_destroy(&mutex_utilisateur);
+    pthread_mutex_destroy(&mutex_camion);
     shmctl(shmid_donnees, IPC_RMID, NULL);
     shmctl(shmid_users, IPC_RMID, NULL);
     shmctl(shmid_poubelles, IPC_RMID, NULL);
     shmctl(shmid_camions, IPC_RMID, NULL);
+    pthread_exit(NULL);
     return EXIT_SUCCESS;
 }
