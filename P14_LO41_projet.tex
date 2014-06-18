@@ -29,7 +29,7 @@
 \setcounter{page}{2}
 Dans le cadre de l'UV LO41, intitulée Architecture et utilisation des systèmes d'exploitation, nous avons été amenés à développer ce projet permettant de mettre en avant nos compétences acquises au cours du semestre. \\
 
-Les notions de processus, de synchronisation interprocessus, de gestion de ressources, des files de messages, mémoires partagée, des sémaphores, des threads, des mutex, des moniteurs et des signaux vont être utilisées dans notre projet.\\
+Les notions de processus, de synchronisation interprocessus, de gestion de ressources, mémoires partagée, des threads, des mutex et des moniteurs vont être utilisées dans notre projet.\\
 
 Ce projet concerne la réalisation d'un gestionnaire de déchets dans une commune. Afin de partir sur de bonnes bases, nous avons conçu un réseau de pétri pour bien comprendre les intéractions entre les différents acteurs, ce qui permet une meilleure compréhension pour la programmation en C du projet.
 
@@ -84,14 +84,13 @@ Pour ceux qui privilégient le dépôt à la borne collective, ils se voient alo
 \paragraph{}Nous n'avons pas réaliser de réseau de Petri global car tous les liens entre les utilisateurs, les poubelles et les camions seraient trop compliqués à comprendre sur un schéma. C'est pourquoi nous allons juste expliquer comme se passe ces étapes. 
 
 \subsection{Installation et utilisation du programme}Ce programme est compatible avec linux (Debian 7 Wheeezy et Xubuntu 13.10). Pour compiler notre programme, il suffit de faire :\\ "gcc main.c -lpthread -g -o Poubelle".
-\paragraph{}Pour exécuter notre programme, il faut lancer l'exécutable avec les 5 arguments suivants: \\./Poubelle NBUSAGERS NBCAMIONS NBPOUBELLESCOLLECTIVES NBPOUBELLEVERRE NBPOUBELLECARTON
+\paragraph{}Les arguments sont obligatoires pour lancer le programme. La simulation se fait sur un nombre de jours prédéfini dans le programme. Pour exécuter notre programme, il faut lancer l'exécutable avec les 5 arguments suivants: \\./Poubelle NBUSAGERS NBCAMIONS NBPOUBELLESCOLLECTIVES NBPOUBELLEVERRE NBPOUBELLECARTON
 
-\paragraph{}Les arguments sont obligatoires pour lancer le programme. La simulation se fait sur un nombre de jours prédéfini dans le programme.
-
+\paragraph{}Le fonctionnement du programme est soumis au variables du nombres de processus maximum par le programme. Il faut pour cela lancer dans le terminal : "ulimit -u", on ne peut pas avoir plus de threads que cette limite. Si on augmente cette valeur, on pourra faire tourner plus de thread pour le programme.
 
 %%%%%%%%%%%% conclusion %%%%%%%%%%%%%%%
 \section{Conclusion}
-\paragraph{}Ce projet a été fortement intéressant cela a été l'occasion de pouvoir mettre en pratique sur un cas concret les concepts vu tout au long du semestre : les threads, les moniteurs, les mutex, les signals... Nous avons su respecter le cahier des charges donné par l'énoncé. La solution que nous avons présentée nous paraît adéquate par rapport au problème posé. Nous avons mis en place un travail de groupe efficace grâce au partage du code des fichiers via Git.
+\paragraph{}Ce projet a été fortement intéressant cela a été l'occasion de pouvoir mettre en pratique sur un cas concret les concepts vu tout au long du semestre : les threads, les moniteurs, les mutex, la mémoire partagée... Nous avons su respecter le cahier des charges donné par l'énoncé. La solution que nous avons présentée nous paraît adéquate par rapport au problème posé. Nous avons mis en place un travail de groupe efficace grâce au partage du code des fichiers via Git.
 \paragraph{}Nous aurions pu nous amuser à faire un algortihme de djikstra pour optimiser le voyage du camion poubelles que nous avons vu en AG41 (optimisation et recherche opérationnelle).
 
 \end{document}
