@@ -4,6 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[francais]{babel}
 \usepackage{graphicx}
+\usepackage{lscape}
 
 \title{\textbf{Projet de LO41 : \\Gestion des déchets}}
 \author{Simon MAGNIN-FEYSOT\\
@@ -25,7 +26,7 @@
 
 %%%%%%%%%%%% INTRODUCTION %%%%%%%%%%%%%%%
 \section{Introduction}
-\setcounter{page}{1}
+\setcounter{page}{2}
 Dans le cadre de l'UV LO41, intitulée Architecture et utilisation des systèmes d'exploitation, nous avons été amenés à développer ce projet permettant de mettre en avant nos compétences acquises au cours du semestre. \\
 
 Les notions de processus, de synchronisation interprocessus, de gestion de ressources, des files de messages, mémoires partagée, des sémaphores, des threads, des mutex, des moniteurs et des signaux vont être utilisées dans notre projet.\\
@@ -50,32 +51,47 @@ Pour ceux qui privilégient le dépôt à la borne collective, ils se voient alo
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Analyse}
-\subsection{Compréhension du sujet}
-
-
 \subsection{Réseaux de pétri}
-\paragraph{} Réseaux de pétri pour un utilisateur : 
+\paragraph{} Pour permettre une meilleure visualisation du programme, nous avons conçu un réseau de Petri. Cet outil graphique permet de modéliser le comportement dynamique de la gestion des poubelles.
+
+\paragraph{}Réseaux de Petri pour un utilisateur : 
 \begin{enumerate}
-\item création utilisateur 
-\item va devant chez lui
-\item veut jeter une poubelle (menager, verre, carton, collective)
-\item remplir poubelle si le remplissage de la poubelle (de type menager, verre, carton ou collective) < 80\% et si l'utilisateur a la clé ou clé bac pour les poubelles de type ménager
+\item Création utilisateur 
+\item L'utilisateur souhaite jeter sa poubelle
+\item Descend vers la poubelle voulue (menager, verre, carton, collective)
+\item L'utilisateur remplie la poubelle voulue si le remplissage de la poubelle de type ménager, verre, carton ou collective est inférieur à 70\% et si l'utilisateur a la clé ou clé bac pour les poubelles de type ménager.
 \end{enumerate}
 
-\subsection{Explications du code}
+\begin{landscape}
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.65]{reseauxPetri_1user.PNG}
+	\end{center}
+	\caption{Réseaux de Petri des usagers}
+\label{Petri}
+\end{figure}
+\end{landscape}
+\paragraph{Explication du réseau de Petri utilisateur} Dans l'exemple de la figure 1, on créé un seul utilisateur. Il souhaite vider sa poubelle dans sa poubelle personnelle donc le point se déplace. L'utilisateur descend vers sa poubelle personnelle. On voit que le remplissage de la poubelle personnelle de l'utilisateur est inférieur à 70\% donc il peut jeter sa poubelle dans sa poubelle personnelle. La poubelle est alors déposée dans sa propre poubelle. Suite à ceci, soit la poubelle est toujours inférieur à 70\% dans ce cas le point se replace dans la place ("remplissage poubelle personnelle < 70\%") et un autre point se déplace dans la place ("l'utilisateur souhaite vider une poubelle"). 
+\paragraph{}Voici le réseau de Petri qui explique comment se déroule le ramassage des poubelles par les camions. 
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.8]{reseauxPetri_1camion.PNG}
+	\end{center}
+	\caption{Réseaux de Petri des camions}
+\label{Petri}
+\end{figure}
+\paragraph{}Lorsque la poubelle est remplie à plus de 70\%, la puce de la poubelle envoie un signal au centre de tri qui envoie un camion adapté à la poubelle. N'importe quelle poubelle remplie à plus de 70\% sera considérée comme remplie pour les camions.
+\paragraph{}Nous n'avons pas réaliser de réseau de Petri global car tous les liens entre les utilisateurs, les poubelles et les camions seraient trop compliqués à comprendre sur un schéma. C'est pourquoi nous allons juste expliquer comme se passe ces étapes. 
 
+\subsection{Installation et utilisation du programme}Ce programme est compatible avec linux (Debian 7 Wheeezy et Xubuntu 13.10). Pour compiler notre programme, il suffit de faire :\\ "gcc main.c -lpthread -g -o Poubelle".
+\paragraph{}Pour exécuter notre programme, il faut lancer l'exécutable avec les 5 arguments suivants: \\./Poubelle NBUSAGERS NBCAMIONS NBPOUBELLESCOLLECTIVES NBPOUBELLEVERRE NBPOUBELLECARTON
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Scenario test}
-\paragraph{}Nous allons maintenant voir quelques exemples d'utilisations. Nous simulons un ramassage des poubelles pendant une période de 30 jours.
+\paragraph{}Les arguments sont obligatoires pour lancer le programme. La simulation se fait sur un nombre de jours prédéfini dans le programme.
 
-\paragraph{}Pour 4 utilisateurs, 2 camions de poubelles, 1 poubelle collective, 1 poubelle à carton et 1 poubelle en verre.
-
-\paragraph{}Pour 100 utilisateurs, 5 camions de poubelles, 3 poubelle collective, 3 poubelle à carton et 3 poubelle en verre.
 
 %%%%%%%%%%%% conclusion %%%%%%%%%%%%%%%
 \section{Conclusion}
-\paragraph{}Ce projet a été fortement intéressant cela a été l'occasion de pouvoir mettre en pratique sur un cas concret les concepts vu tout au long du semestre : les threads, les mutex, les files de messages... Nous avons su respecter le cahier des charges donné par l'énoncé. La solution que nous avons présentée nous paraît adéquate par rapport au problème posé. Nous avons mis en place un travail de groupe efficace grâce au partage du code des fichiers via Git.
-\paragraph{}Nous aurions pu nous amuser à faire un algortihme de djikstra pour optimiser le voyage du camion poubelles.
+\paragraph{}Ce projet a été fortement intéressant cela a été l'occasion de pouvoir mettre en pratique sur un cas concret les concepts vu tout au long du semestre : les threads, les moniteurs, les mutex, les signals... Nous avons su respecter le cahier des charges donné par l'énoncé. La solution que nous avons présentée nous paraît adéquate par rapport au problème posé. Nous avons mis en place un travail de groupe efficace grâce au partage du code des fichiers via Git.
+\paragraph{}Nous aurions pu nous amuser à faire un algortihme de djikstra pour optimiser le voyage du camion poubelles que nous avons vu en AG41 (optimisation et recherche opérationnelle).
 
 \end{document}
