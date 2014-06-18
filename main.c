@@ -336,15 +336,15 @@ int main (int argc, char** argv) {
     donnees[2] = atoi(argv[3]);
     donnees[3] = atoi(argv[4]);
     donnees[4] = atoi(argv[5]);
-    shmid_poubelles = shmget(IPC_PRIVATE, (NOMBRE_VERRE + NOMBRE_COLLECTIVE + NOMBRE_CARTON)*sizeof(int), 0666);
+    shmid_poubelles = shmget(IPC_PRIVATE, (NOMBRE_VERRE + NOMBRE_COLLECTIVE + NOMBRE_CARTON)*sizeof(Poubelle), 0666);
     allBin = (Poubelle *) shmat (shmid_poubelles, NULL, 0);
-    shmid_camions = shmget(IPC_PRIVATE, 5*sizeof(int), 0666);
+    shmid_camions = shmget(IPC_PRIVATE, donnees[1]*sizeof(Ramasseur), 0666);
     initialisationPoubelleCollective();
     allTrucks = (Ramasseur *) shmat (shmid_camions, NULL, 0);
     pthread_t usager_id[NOMBRE_USAGER];
     pthread_t camion_id[NOMBRE_CAMION];
     sem_id = semget(ftok("Poubelles", IPC_PRIVATE), 1, IPC_CREAT);
-    shmid_users = shmget(IPC_PRIVATE, 100*sizeof(Usager), 0666);
+    shmid_users = shmget(IPC_PRIVATE, donnees[0]*sizeof(Usager), 0666);
     allUser = (Usager *) shmat (shmid_users, NULL, 0);
     for (i = 0; i < NOMBRE_USAGER; i++) { //création threads usagers
         pthread_mutex_lock(&mutex_utilisateur);
@@ -352,6 +352,9 @@ int main (int argc, char** argv) {
         if (rc) {
             printf("ERROR ; return code from pthread_create() is %d\n", rc);
             exit(-1);
+            if(rc == 11){
+            printf("Lack of memory for another thread creation :/");
+            }
         }
     }
     i = 0;
@@ -360,7 +363,7 @@ int main (int argc, char** argv) {
         rc = pthread_create(&camion_id[e], NULL, eboueur, (void *) &e);
         printf("camion %d\n", e);
         if (rc) {
-            printf("ERROR ; return code from pthread_create() is %d\n",rc);
+            printf("ERROR ; return code from pthread_create is %d\n",rc);
             exit(-1);
         }
     }
