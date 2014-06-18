@@ -40,6 +40,7 @@
 
 #define JOURS 365
 
+int jour;
 int shmid_donnees, shmid_users, shmid_poubelles, shmid_camions;
 int shm_cle;
 int *donnees;
@@ -88,7 +89,7 @@ Ramasseur *allTrucks;
 
 void viderPoubelle (Poubelle *p, int id, int usager) ;
 
-int remplirPoubelle (int id, int type, int semid, int semnum) {
+int remplirPoubelle (int id, int type) {
 
     int s;
     if (allUser[id].dechets[type].type == allUser[id].poubelleDuFoyer.type && allUser[id].poubelleDuFoyer.remplissage + allUser[id].dechets[type].volume <= allUser[id].poubelleDuFoyer.volume && (allUser[id].contrat == BAC || allUser[id].contrat == CLE_BAC)) { //déchets ménager dans poubelle foyer
@@ -210,18 +211,17 @@ void *utiliser (void *num) {
         allUser[id].poubelleDuFoyer.type = MENAGER;
     }
     // lancement de son activité
-    srand ((int) time(NULL)) ;
-    for (j = 0; j < JOURS; j++) {
+    for (jour = 0; jour < JOURS; jour++) {
         for ( k = 0; k < 3; k++) {
-            allUser[id].dechets[j].volume = (rand() % 20 + 1); // Génére des déchets de O à 20L
-            if (remplirPoubelle(id, j, semid, semnum) == FALSE) {
-                printf("L'utilisateur n°%d fait un depôt sauvage de %d L\n", id, allUser[id].dechets[j].volume);
-                allUser[id].dechets[j].volume = 0;
+            allUser[id].dechets[k].volume = (rand() % 20 + 1); // Génére des déchets de O à 20L
+            if (remplirPoubelle(id, k) == FALSE) {
+                printf("L'utilisateur n°%d fait un depôt sauvage de %d L\n", id, allUser[id].dechets[k].volume);
+                allUser[id].dechets[k].volume = 0;
                 //dépôt sauvage, dans le cas où l'usager n'a pas pu vider sa poubelle ...
             }
         }
         sleep(1);// Dort une seconde pour simuler journée et permettre un affichage agréable en console
-        printf("Jour %d \n", j);
+        printf("Jour %d \n", jour);
     }
     pthread_exit(NULL);
 }
@@ -238,36 +238,36 @@ void *eboueur (void *num) { //Thread Camions
     srand ((int) time(NULL)) ;
     int choix = rand() % 2 + 1;
     if (choix == 1) {// s'occupe des poubelles collectives
+        //pthread_cond_wait(&attente, &mutex_poubelle_collective);
         while (1) {
-            pthread_cond_wait(&attente, &mutex_poubelle_collective);
+            l = rand() % (NOMBRE_VERRE + NOMBRE_CARTON + NOMBRE_COLLECTIVE) + 1;
             if ((float)allBin[l].remplissage / (float)allBin[l].volume > 0.7) {
                 printf("camion n°%d, vide une poubelle\n", id);
                 viderPoubelle(&allBin[l], id,  FALSE);
                 allTrucks[id].type == allBin[id].type;
             }
-            l++;
         }
         while (1) {
+            //pthread_cond_wait(&attente, &mutex_poubelle_collective);
             for (l = 0; l < (NOMBRE_VERRE + NOMBRE_CARTON + NOMBRE_COLLECTIVE); l ++) {
                 if (allBin[l].type == allTrucks[id].type && ((float)allBin[l].remplissage / (float)allBin[l].volume) > 0.7) {
                     printf("camion n°%d, vide une poubelle\n", id);
-                    poubelleAVider = &allBin[l];
+                    viderPoubelle(poubelleAVider, id, FALSE);
                 }
             }
-            viderPoubelle(poubelleAVider, id, FALSE);
         }
     }
     else{//s'occupe des poubelles personnelles
-        allTrucks[id].type = MENAGER;
+        //pthread_cond_wait(&attente, &mutex_poubelle);
         while (1) {
-            pthread_cond_wait(&attente, &mutex_poubelle);
+            allTrucks[id].type = MENAGER;
             for (l = 0; l < (NOMBRE_USAGER); l ++) {
                 if (allUser[l].poubelleDuFoyer.type == allTrucks[id].type && ((float)allUser[l].poubelleDuFoyer.remplissage / (float)allUser[l].poubelleDuFoyer.volume) > 0.7) {
                     printf("camion n°%d, vide une poubelle utilisateur\n", id);
                     poubelleAVider = &allUser[l].poubelleDuFoyer;
+                    viderPoubelle(poubelleAVider, id, TRUE);
                 }
             }
-            viderPoubelle(poubelleAVider, id, TRUE);
         }
     }
     pthread_exit(NULL);
